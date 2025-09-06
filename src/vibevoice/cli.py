@@ -27,6 +27,30 @@ from loading_indicator import LoadingIndicator
 
 loading_indicator = LoadingIndicator()
 
+def load_custom_system_prompt():
+    """Load custom system prompt from custom_prompt.md file."""
+    custom_prompt_path = os.path.join(os.getcwd(), 'custom_prompt.md')
+    try:
+        if os.path.exists(custom_prompt_path):
+            with open(custom_prompt_path, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+                if content:
+                    print(f"Loaded custom system prompt from {custom_prompt_path}")
+                    return content
+    except Exception as e:
+        print(f"Error loading custom system prompt: {e}")
+    
+    # Fall back to default prompt
+    default_prompt = """You are a voice-controlled AI assistant. The user is talking to their computer using voice commands.
+Your responses will be directly typed into the user's keyboard at their cursor position, so:
+1. Be concise and to the point, but friendly and engaging - prefer shorter answers
+2. Focus on answering the specific question or request
+3. Don't use introductory phrases like "Here's..." or "Based on the screenshot..."
+4. Don't include formatting like bullet points, which might look strange when typed
+5. Never apologize for limitations or explain what you're doing"""
+    print("Using default system prompt (custom_prompt.md not found or empty)")
+    return default_prompt
+
 def start_whisper_server():
     server_script = os.path.join(os.path.dirname(__file__), 'server.py')
     process = subprocess.Popen(['python', server_script])
@@ -135,6 +159,9 @@ Your responses will be directly typed into the user's keyboard at their cursor p
                         # U+2018 (') and U+2019 (') are both replaced with standard apostrophe (')
                         normalized_text = chunk_text.replace('\u2019', "'").replace('\u2018', "'")
                         
+                        # Remove newlines to prevent unwanted line breaks when typing
+                        normalized_text = normalized_text.replace('\n', ' ').replace('\r', ' ')
+                        
                         keyboard_controller.type(normalized_text)
                         loading_indicator.hide()
         
@@ -144,13 +171,64 @@ Your responses will be directly typed into the user's keyboard at their cursor p
     finally:
         loading_indicator.hide()
 
+def _process_custom_llm_cmd(keyboard_controller, transcript, custom_system_prompt):
+    """Process transcript with Ollama using custom system prompt (text-only, no screenshots)."""
+
+    try:
+        loading_indicator.show(message=f"Processing with custom prompt: {transcript}")
+        
+        model = os.getenv('OLLAMA_MODEL', 'gemma3:27b')
+        user_prompt = transcript.strip()
+        
+        url = "http://localhost:11434/api/generate"
+        payload = {
+            "model": model,
+            "prompt": user_prompt,
+            "system": custom_system_prompt,
+            "stream": True
+        }
+        print(f"Sending custom prompt request (text-only) to model: {model}")
+        
+        response = requests.post(url, json=payload, stream=True)
+        response.raise_for_status()
+        
+        for line in response.iter_lines():
+            if line:
+                data = line.decode('utf-8')
+                if data.startswith('{'):
+                    chunk = json.loads(data)
+                    if 'response' in chunk:
+                        chunk_text = chunk['response']
+                        print(f"Debug - received chunk: {repr(chunk_text)}")
+                        
+                        # Replace smart/curly quotes with standard apostrophes
+                        # U+2018 (') and U+2019 (') are both replaced with standard apostrophe (')
+                        normalized_text = chunk_text.replace('\u2019', "'").replace('\u2018', "'")
+                        
+                        # Remove newlines to prevent unwanted line breaks when typing
+                        normalized_text = normalized_text.replace('\n', ' ').replace('\r', ' ')
+                        
+                        keyboard_controller.type(normalized_text)
+                        loading_indicator.hide()
+        
+        return "Successfully processed with custom Ollama prompt"
+    except requests.exceptions.RequestException as e:
+        print(f"Error calling Ollama: {e}")
+    finally:
+        loading_indicator.hide()
+
 def main():
     load_dotenv()
     key_label = os.environ.get("VOICEKEY", "ctrl_r")
     cmd_label = os.environ.get("VOICEKEY_CMD", "scroll_lock")
+    custom_label = os.environ.get("VOICEKEY_CUSTOM", "num_lock")
     RECORD_KEY = Key[key_label]
     CMD_KEY = Key[cmd_label]
+    CUSTOM_KEY = Key[custom_label]
 #    CMD_KEY = KeyCode(vk=65027)  # This is how you can use non-standard keys, this is AltGr for me
+
+    # Load custom system prompt at startup
+    custom_system_prompt = load_custom_system_prompt()
 
     recording = False
     audio_data = []
@@ -159,14 +237,14 @@ def main():
 
     def on_press(key):
         nonlocal recording, audio_data
-        if key == RECORD_KEY or key == CMD_KEY and not recording:
+        if (key == RECORD_KEY or key == CMD_KEY or key == CUSTOM_KEY) and not recording:
             recording = True
             audio_data = []
             print("Listening...")
 
     def on_release(key):
         nonlocal recording, audio_data
-        if key == RECORD_KEY or key == CMD_KEY:
+        if key == RECORD_KEY or key == CMD_KEY or key == CUSTOM_KEY:
             recording = False
             print("Transcribing...")
             
@@ -192,6 +270,8 @@ def main():
                     keyboard_controller.type(processed_transcript)
                 elif transcript and key == CMD_KEY:
                     _process_llm_cmd(keyboard_controller, transcript)
+                elif transcript and key == CUSTOM_KEY:
+                    _process_custom_llm_cmd(keyboard_controller, transcript, custom_system_prompt)
             except requests.exceptions.RequestException as e:
                 print(f"Error sending request to local API: {e}")
             except Exception as e:
@@ -208,7 +288,10 @@ def main():
     try:
         print(f"Waiting for the server to be ready...")
         wait_for_server()
-        print(f"vibevoice is active. Hold down {key_label} to start dictating.")
+        print(f"vibevoice is active.")
+        print(f"  {key_label}: Dictation mode")
+        print(f"  {cmd_label}: AI command mode (with screenshot if enabled)")
+        print(f"  {custom_label}: Custom AI prompt mode (text-only)")
         with Listener(on_press=on_press, on_release=on_release) as listener:
             with sd.InputStream(callback=callback, channels=1, samplerate=sample_rate):
                 listener.join()
