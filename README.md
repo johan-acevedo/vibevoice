@@ -15,14 +15,21 @@ Simply run `cli.py` and start dictating text anywhere in your system:
 
 Works in any application or window - your text editor, browser, chat apps, anywhere you can type!
 
-NEW: LLM voice command mode:
+NEW: Enhanced LLM voice modes:
 
+**AI Command Mode:**
 1. Hold down the scroll_lock key (I think it's normally not used anymore that's why I chose it)
 2. Speak what you want the LLM to do
 3. The LLM receives your transcribed text and a screenshot of your current view
 4. The LLM answer is typed into your keyboard (streamed)
 
-Works everywhere on your system and the LLM always has the screen context
+**Custom AI Prompt Mode (NEW!):**
+1. Hold down the Num Lock key
+2. Speak your text in any language
+3. Uses your custom system prompt from `custom_prompt.md` for specialized processing
+4. Perfect for technical transcription, translation, and grammar improvement
+
+Works everywhere on your system with full context awareness
 
 ## Installation 🛠️
 
@@ -32,6 +39,11 @@ cd vibevoice
 pip install -r requirements.txt
 python src/vibevoice/cli.py
 ```
+
+The project includes several configuration files:
+- `custom_prompt.md` - Custom system prompt for specialized AI processing
+- `CLAUDE.md` - Detailed setup and configuration guide
+- `start_no_screenshot.sh` - Utility script to start without screenshots
 
 ## Requirements 📋
 
@@ -106,6 +118,10 @@ You can customize various aspects of VibeVoice with the following environment va
   ```bash
   export VOICEKEY_CMD="ctsl"  # Use left control instead of Scroll Lock key
   ```
+- `VOICEKEY_CUSTOM`: Set the key for custom AI prompt mode (default: "num_lock")
+  ```bash
+  export VOICEKEY_CUSTOM="pause"  # Use Pause key instead of Num Lock
+  ```
 
 #### AI and Screenshot Features
 - `OLLAMA_MODEL`: Specify which Ollama model to use (default: "gemma3:27b")
@@ -127,9 +143,45 @@ To use the screenshot functionality:
 sudo apt install gnome-screenshot
 ```
 
+## Custom System Prompts 🎯
+
+VibeVoice supports custom system prompts for specialized AI processing through the `custom_prompt.md` file.
+
+### Setting Up Custom Prompts
+
+1. Create a `custom_prompt.md` file in the project root directory
+2. Write your custom system prompt in this file
+3. The prompt will be loaded when the service starts
+4. Use the custom key (default: Num Lock) to activate custom prompt mode
+
+### Features
+
+The default custom prompt is configured as a **technical transcription assistant** that:
+
+- **Cleans transcription errors**: Fixes technical terms like "post gray sequel" → "PostgreSQL"
+- **Removes fillers**: Eliminates "um", "uh", stutters, and repetitions
+- **Translates languages**: Converts any non-English speech to English
+- **Improves grammar**: Enhances clarity while preserving original meaning
+- **Handles technical jargon**: Accurately interprets coding terms, function names, and APIs
+- **Single-line output**: Prevents unwanted line breaks when typing into editors
+
+### Example Custom Prompt Usage
+
+**Input (Swedish):** "Jag vill um konfigurera post gray sequel databasen med redis caching"
+
+**Output:** "I want to configure the PostgreSQL database with Redis caching"
+
+### Customization
+
+Replace the contents of `custom_prompt.md` with your own system prompt for different behaviors:
+- Code review assistant
+- Writing improvement tool  
+- Domain-specific terminology processor
+- Language-specific translator
+
 ## Usage Modes 💡
 
-VibeVoice supports two modes:
+VibeVoice supports three modes:
 
 ### 1. Dictation Mode
 1. Hold down the dictation key (default: right Control)
@@ -142,6 +194,13 @@ VibeVoice supports two modes:
 2. Ask a question or give a command
 3. Release the key
 4. The AI will analyze your request (and current screen if enabled) and type a response
+
+### 3. Custom AI Prompt Mode
+1. Hold down the custom key (default: Num Lock)
+2. Speak your text in any language
+3. Release the key
+4. The AI processes your speech using your custom system prompt from `custom_prompt.md`
+5. Perfect for technical transcription, translation, grammar improvement, and specialized text processing
 
 ## Credits 🙏
 
