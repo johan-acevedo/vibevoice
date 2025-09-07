@@ -33,11 +33,23 @@ Works everywhere on your system with full context awareness
 
 ## Installation 🛠️
 
+### Quick Start
 ```bash
 git clone https://github.com/mpaepper/vibevoice.git
 cd vibevoice
 pip install -r requirements.txt
 python src/vibevoice/cli.py
+```
+
+### Autostart Setup (Recommended)
+For automatic startup and system tray integration:
+```bash
+# Install autostart service and status widget
+./scripts/setup-autostart.sh
+
+# Start everything now (or it will start automatically on next login)
+systemctl --user start vibevoice
+python3 src/vibevoice/status_widget.py &
 ```
 
 The project includes several configuration files:
@@ -57,6 +69,15 @@ The project includes several configuration files:
 - cuDNN 9.x
 - In case you get this error: `OSError: PortAudio library not found` run `sudo apt install libportaudio2`
 - [Ollama](https://ollama.com) for AI command mode (with multimodal models for screenshot support)
+
+### GUI Dependencies (for status widget)
+- GTK3: `sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0`
+- System tray support (recommended): `sudo apt install gir1.2-ayatanaappindicator3-0.1`
+- Legacy system tray (fallback): `sudo apt install gir1.2-appindicator3-0.1`
+
+### System Integration (Linux)
+- systemd (for autostart service)
+- Desktop environment with system tray/notification area
 
 #### Setting up Ollama
 1. Install Ollama by following the instructions at [ollama.com](https://ollama.com)
@@ -201,6 +222,46 @@ VibeVoice supports three modes:
 3. Release the key
 4. The AI processes your speech using your custom system prompt from `custom_prompt.md`
 5. Perfect for technical transcription, translation, grammar improvement, and specialized text processing
+
+## Autostart & Status Widget 🔧
+
+VibeVoice includes systemd service integration and a desktop status widget for seamless system integration:
+
+### Features
+- **Automatic startup** when you log in
+- **System tray indicator** showing service status
+- **Easy service control** via right-click menu or command line
+- **Service monitoring** with status updates every 5 seconds
+- **Desktop notifications** for service state changes
+
+### Setup
+```bash
+# Install autostart and status widget
+./scripts/setup-autostart.sh
+
+# Manual service control
+systemctl --user start vibevoice     # Start service
+systemctl --user stop vibevoice      # Stop service
+systemctl --user status vibevoice    # Check status
+journalctl --user -u vibevoice -f    # View logs
+
+# Launch status widget manually
+python3 src/vibevoice/status_widget.py &
+```
+
+### Status Widget
+The status widget provides:
+- **Visual status indicator** (microphone icon in system tray)
+- **Service controls** (Start/Stop/Restart via right-click menu)
+- **Service information** (uptime, model, key bindings)
+- **Log access** (opens terminal with live log viewing)
+- **Fallback mode** (window interface if system tray unavailable)
+
+### Removal
+```bash
+# Remove autostart and status widget
+./scripts/remove-autostart.sh
+```
 
 ## Credits 🙏
 

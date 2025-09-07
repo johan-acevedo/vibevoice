@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Name=Vibevoice Status Indicator
+Comment=Show status indicator for Vibevoice voice assistant service
+Exec=python3 %h/vibevoice/src/vibevoice/status_widget.py
+Icon=audio-input-microphone
+Terminal=false
+Type=Application
+Categories=Utility;System;AudioVideo;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
+Hidden=false

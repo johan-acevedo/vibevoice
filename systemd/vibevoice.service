@@ -1,0 +1,30 @@
+[Unit]
+Description=Vibevoice Voice Assistant Service
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+Environment=PATH=%h/.pyenv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYENV_ROOT=%h/.pyenv
+ExecStartPre=/bin/bash -c 'eval "$(%h/.pyenv/bin/pyenv init -)" && pyenv versions'
+ExecStart=/bin/bash -c 'cd %h/vibevoice && export PATH="%h/.pyenv/bin:$PATH" && eval "$(%h/.pyenv/bin/pyenv init -)" && python src/vibevoice/cli.py'
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+WorkingDirectory=%h/vibevoice
+
+# Environment variables for vibevoice
+Environment=VOICEKEY=ctrl_r
+Environment=VOICEKEY_CMD=scroll_lock
+Environment=VOICEKEY_CUSTOM=num_lock
+Environment=OLLAMA_MODEL=gemma3:12b-it-qat
+Environment=INCLUDE_SCREENSHOT=true
+Environment=SCREENSHOT_MAX_WIDTH=1024
+
+# Ensure we have a display for GUI components
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=default.target

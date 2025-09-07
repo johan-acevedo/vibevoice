@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=Vibevoice
+Comment=Voice-controlled AI assistant
+Exec=bash -c 'cd %h/vibevoice && export PATH="%h/.pyenv/bin:$PATH" && eval "$(%h/.pyenv/bin/pyenv init -)" && python src/vibevoice/cli.py'
+Icon=audio-input-microphone
+Terminal=true
+Type=Application
+Categories=Utility;AudioVideo;Accessibility;
+Keywords=voice;speech;AI;assistant;dictation;

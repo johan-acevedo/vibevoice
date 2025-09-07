@@ -77,6 +77,43 @@ To use custom AI prompts:
 
 If `custom_prompt.md` doesn't exist or is empty, the system will fall back to a default prompt similar to the regular AI mode but without screenshot functionality.
 
+## Autostart & Status Widget
+
+The vibevoice service can be configured to start automatically and show a desktop status widget:
+
+### Installation
+```bash
+./scripts/setup-autostart.sh
+```
+
+### System Tray Support
+For system tray indicator (recommended):
+```bash
+sudo apt install gir1.2-ayatanaappindicator3-0.1
+```
+
+Or for legacy systems:
+```bash
+sudo apt install gir1.2-appindicator3-0.1
+```
+
+### Manual Control
+```bash
+# Service control
+systemctl --user start vibevoice
+systemctl --user stop vibevoice
+systemctl --user status vibevoice
+journalctl --user -u vibevoice -f
+
+# Status widget
+python3 src/vibevoice/status_widget.py &
+```
+
+### Removal
+```bash
+./scripts/remove-autostart.sh
+```
+
 ## Troubleshooting
 
 ### If pyenv isn't working:
