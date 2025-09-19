@@ -171,49 +171,81 @@ Your responses will be directly typed into the user's keyboard at their cursor p
     finally:
         loading_indicator.hide()
 
-def _process_custom_llm_cmd(keyboard_controller, transcript, custom_system_prompt):
-    """Process transcript with Ollama using custom system prompt (text-only, no screenshots)."""
-
+def _transcribe_swedish(keyboard_controller, recording_path):
+    """Transcribe audio to Swedish with software development context."""
     try:
-        loading_indicator.show(message=f"Processing with custom prompt: {transcript}")
-        
-        model = os.getenv('OLLAMA_MODEL', 'gemma3:27b')
-        user_prompt = transcript.strip()
-        
-        url = "http://localhost:11434/api/generate"
-        payload = {
-            "model": model,
-            "prompt": user_prompt,
-            "system": custom_system_prompt,
-            "stream": True
-        }
-        print(f"Sending custom prompt request (text-only) to model: {model}")
-        
-        response = requests.post(url, json=payload, stream=True)
+        loading_indicator.show(message="Transcribing to Swedish...")
+
+        # Get configurable parameters from environment
+        swedish_language = os.getenv('SWEDISH_LANGUAGE', 'sv')
+        swedish_prompt = os.getenv('SWEDISH_PROMPT',
+            'Det här är en intervju om mjukvaruutveckling och SaaS med svenska termer. Å, Ä, Ö ska användas. Termer: API, databas, skalbarhet, deployment, commit, branch, merge, pull request, issue, sprint, backlog, scrum, kanban, devops, CI/CD, docker, kubernetes, microservices, serverless, cloud, azure, aws.')
+
+        # Send transcription request with Swedish language and advanced decoding parameters
+        response = requests.post('http://localhost:4242/transcribe/',
+                              json={
+                                  'file_path': recording_path,
+                                  'language': swedish_language,
+                                  'task': 'transcribe',
+                                  'initial_prompt': swedish_prompt,
+                                  'beam_size': 5,
+                                  'best_of': 1,
+                                  'temperature': 0,
+                                  'vad_filter': True,
+                                  'vad_parameters': { 'min_silence_duration_ms': 200, 'speech_pad_ms': 120 },
+                                  'log_prob_threshold': -1.0
+                              })
         response.raise_for_status()
-        
-        for line in response.iter_lines():
-            if line:
-                data = line.decode('utf-8')
-                if data.startswith('{'):
-                    chunk = json.loads(data)
-                    if 'response' in chunk:
-                        chunk_text = chunk['response']
-                        print(f"Debug - received chunk: {repr(chunk_text)}")
-                        
-                        # Replace smart/curly quotes with standard apostrophes
-                        # U+2018 (') and U+2019 (') are both replaced with standard apostrophe (')
-                        normalized_text = chunk_text.replace('\u2019', "'").replace('\u2018', "'")
-                        
-                        # Remove newlines to prevent unwanted line breaks when typing
-                        normalized_text = normalized_text.replace('\n', ' ').replace('\r', ' ')
-                        
-                        keyboard_controller.type(normalized_text)
-                        loading_indicator.hide()
-        
-        return "Successfully processed with custom Ollama prompt"
+        transcript = response.json()['text']
+
+        if transcript:
+            processed_transcript = transcript + " "
+            print(f"Swedish: {processed_transcript}")
+            keyboard_controller.type(processed_transcript)
+
+        loading_indicator.hide()
+        return "Successfully transcribed to Swedish"
     except requests.exceptions.RequestException as e:
-        print(f"Error calling Ollama: {e}")
+        print(f"Error transcribing to Swedish: {e}")
+    finally:
+        loading_indicator.hide()
+
+def _transcribe_english(keyboard_controller, recording_path):
+    """Transcribe audio to English with software development context."""
+    try:
+        loading_indicator.show(message="Transcribing to English...")
+
+        # Get configurable parameters from environment
+        english_language = os.getenv('ENGLISH_LANGUAGE', 'en')
+        english_prompt = os.getenv('ENGLISH_PROMPT',
+            'This is a technical discussion about software development, SaaS, and startups. Technical terms include programming, APIs, databases, cloud services, scalability, deployment, commit, branch, merge, pull request, issue, sprint, backlog, scrum, kanban, devops, CI/CD, docker, kubernetes, microservices, serverless.')
+
+        # Send transcription request with English language and advanced decoding parameters
+        response = requests.post('http://localhost:4242/transcribe/',
+                              json={
+                                  'file_path': recording_path,
+                                  'language': english_language,
+                                  'task': 'transcribe',
+                                  'initial_prompt': english_prompt,
+                                  'beam_size': 5,
+                                  'best_of': 1,
+                                  'temperature': 0,
+                                  'vad_filter': True,
+                                  'vad_parameters': { 'min_silence_duration_ms': 200, 'speech_pad_ms': 120 },
+                                  'log_prob_threshold': -1.0
+                              })
+        response.raise_for_status()
+        transcript = response.json()['text']
+
+        if transcript:
+            processed_transcript = transcript + " "
+            print(f"English: {processed_transcript}")
+            keyboard_controller.type(processed_transcript)
+
+        loading_indicator.hide()
+        return "Successfully transcribed to English"
+    except requests.exceptions.RequestException as e:
+        print(f"Error transcribing to English: {e}")
     finally:
         loading_indicator.hide()
 
@@ -259,19 +291,20 @@ def main():
             wavfile.write(recording_path, sample_rate, audio_data_int16)
 
             try:
-                response = requests.post('http://localhost:4242/transcribe/', 
-                                      json={'file_path': recording_path})
-                response.raise_for_status()
-                transcript = response.json()['text']
-                
-                if transcript and key == RECORD_KEY:
-                    processed_transcript = transcript + " "
-                    print(processed_transcript)
-                    keyboard_controller.type(processed_transcript)
-                elif transcript and key == CMD_KEY:
-                    _process_llm_cmd(keyboard_controller, transcript)
-                elif transcript and key == CUSTOM_KEY:
-                    _process_custom_llm_cmd(keyboard_controller, transcript, custom_system_prompt)
+                if key == RECORD_KEY:
+                    # English transcription with software development context
+                    _transcribe_english(keyboard_controller, recording_path)
+                elif key == CMD_KEY:
+                    # AI command mode (existing functionality)
+                    response = requests.post('http://localhost:4242/transcribe/',
+                                          json={'file_path': recording_path})
+                    response.raise_for_status()
+                    transcript = response.json()['text']
+                    if transcript:
+                        _process_llm_cmd(keyboard_controller, transcript)
+                elif key == CUSTOM_KEY:
+                    # Swedish transcription with software development context
+                    _transcribe_swedish(keyboard_controller, recording_path)
             except requests.exceptions.RequestException as e:
                 print(f"Error sending request to local API: {e}")
             except Exception as e:
@@ -289,9 +322,9 @@ def main():
         print(f"Waiting for the server to be ready...")
         wait_for_server()
         print(f"vibevoice is active.")
-        print(f"  {key_label}: Dictation mode")
+        print(f"  {key_label}: English transcription (software development context)")
         print(f"  {cmd_label}: AI command mode (with screenshot if enabled)")
-        print(f"  {custom_label}: Custom AI prompt mode (text-only)")
+        print(f"  {custom_label}: Swedish transcription (software development context)")
         with Listener(on_press=on_press, on_release=on_release) as listener:
             with sd.InputStream(callback=callback, channels=1, samplerate=sample_rate):
                 listener.join()
